@@ -6,5 +6,10 @@ module.exports = {
   networks: {
     /* BY LEAVING IT EMPTY IT KNOW THAT IT IS A LOCAL NETWORK */
     localhost: {}
+  },
+  hardhat: {
+    stackTrace: {
+      disable: true
+    }
   }
 };
