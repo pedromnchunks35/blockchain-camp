@@ -32,6 +32,9 @@ contract Exchange {
     //? Mapping to know if a order is canceled
     mapping(uint256 => bool) public canceledOrders;
 
+    //? Mapping to know if a order is canceled
+    mapping(uint256 => bool) public filledOrders;
+
     //? CONSTRUCT FUNCTION, THIS WILL INITIATE THE CONTRACT
     constructor(address _feeAccount, uint256 _feePercent) {
         feeAccount = _feeAccount;
@@ -79,6 +82,16 @@ contract Exchange {
         uint256 _amountGive,
         uint256 _timestamp
     );
+    event Trade(
+        uint256 _id,
+        address _user,
+        address _tokenGet,
+        address _tokenGive,
+        uint256 _amountGet,
+        uint256 _amountGive,
+        address _creator,
+        uint256 _timestamp
+    );
 
     //? DEPOSIT TOKEN
     /// @param _token, address of the token we want to deposit
@@ -90,7 +103,7 @@ contract Exchange {
         Token(_token).transferFrom(msg.sender, address(this), _amount);
 
         // TODO Update user balance
-        tokens[_token][msg.sender] = tokens[_token][msg.sender] + _amount;
+        tokens[_token][msg.sender] += _amount;
 
         // TODO Emit an event
         emit Deposit(_token, msg.sender, _amount, tokens[_token][msg.sender]);
@@ -118,7 +131,7 @@ contract Exchange {
             "You don't have enought balance of that token to withdraw"
         );
         // TODO Update user balance
-        tokens[_token][msg.sender] = tokens[_token][msg.sender] - _amount;
+        tokens[_token][msg.sender] -= _amount;
         // TODO Transfer token to the user
         Token(_token).transfer(msg.sender, _amount);
         // TODO Emit event
@@ -194,6 +207,65 @@ contract Exchange {
             _order._tokenGive,
             _order._amountGet,
             _order._amountGive,
+            block.timestamp
+        );
+    }
+
+    //? Fill order
+    /// @param _id, the id of the order
+    //* @returns Success or Revert
+    function fillOrder(uint256 _id) public {
+        // TODO Fetch order
+        Order storage _order = orders[_id];
+
+        // TODO Check if the item exists
+        require(_order._id == _id, "The given id does not exists");
+
+        // TODO Order cannot be a canceled one
+        require(!canceledOrders[_id], "The order cannot be a canceled one");
+
+        // TODO Order cannot be filled
+        require(!filledOrders[_id], "The order cannot be a filled one");
+
+        // TODO Calculate the fee
+        uint256 _feeAmount = (_order._amountGet * feePercent) / 100;
+
+        // TODO The msg.sender needs to have enough balance of the tokens the other is asking in sum with the fee
+        require(
+            tokens[_order._tokenGet][msg.sender] >=
+                _order._amountGet + _feeAmount,
+            "You don't have enought balance to fill the order"
+        );
+        // TODO Swap the tokens
+        _trade(_order, _feeAmount);
+
+        // TODO Fill the order
+        filledOrders[_id] = true;
+    }
+
+    //? Function to make the swap happen
+    /// @param _order, this is the order info
+    //* @return Success
+    function _trade(Order storage _order, uint256 _feeAmount) internal {
+        // TODO Send the Fee to the account that receives the fee
+        tokens[_order._tokenGet][feeAccount] += _feeAmount;
+        // TODO Remove tokens from the orderer creator
+        tokens[_order._tokenGive][_order._user] -= _order._amountGive;
+        // TODO Add the tokens that the order established to swap
+        tokens[_order._tokenGet][_order._user] += _order._amountGet;
+        // TODO Remove tokens from the orderer filler
+        tokens[_order._tokenGet][msg.sender] -= (_order._amountGet +
+            _feeAmount);
+        // TODO Add the tokens that the filler agreed to give out
+        tokens[_order._tokenGive][msg.sender] += _order._amountGive;
+        emit Trade(
+            _order._id,
+            msg.sender,
+            _order._tokenGet,
+            _order._tokenGive,
+            _order._amountGet,
+            _order._amountGive,
+            _order._user,
             block.timestamp
         );
     }

@@ -1,5 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+
 /* FUNCTION TO TAKE A NUMBER OF TOKENS AND HAVE THAT
 CONSIDERING THE DECIMALS */
 const realVal = (_number_of_tokens) => {
@@ -9,7 +10,7 @@ const realVal = (_number_of_tokens) => {
 }
 
 describe('Exchange', () => {
-    let deployer, feeAccount, exchange, tokenDapp, tokenTwo, user1, user2;
+    let deployer, feeAccount, exchange, tokenDapp, tokenTwo, user1, user2, user3;
     let feePercent = 10;
     let valueSent = realVal(100);
 
@@ -25,9 +26,11 @@ describe('Exchange', () => {
         feeAccount = accounts[1];
         user1 = accounts[2];
         user2 = accounts[3];
+        user3 = accounts[4];
         exchange = await Exchange.deploy(feeAccount.address, feePercent);
         //? TRANSFER 100 TOKENS TO THE ACCOUNT WE ARE TESTING OUT LATER
         let transaction = await tokenDapp.connect(deployer).transfer(user1.address, valueSent);
+        let tx2 = await tokenTwo.connect(deployer).transfer(user2.address, valueSent);
     });
 
     describe('Deployment', () => {
@@ -321,8 +324,8 @@ describe('Exchange', () => {
                         return tx_cancel_order.wait()
                             .then(cancel_order_result => {
                                 result = cancel_order_result;
-                            })
-                    })
+                            });
+                    });
             })
 
             it("Cancels the order", () => {
@@ -343,7 +346,7 @@ describe('Exchange', () => {
                 expect(args._amountGet).to.equal(amountGet);
                 expect(args._amountGive).to.equal(amountGive);
                 expect(args._timestamp).to.at.least(1);
-            })
+            });
         });
 
         describe('Failure', () => {
@@ -355,20 +358,24 @@ describe('Exchange', () => {
                         expect(err.message).to.include("You need to be the owner to cancel a order");
                     });
             });
+
             it("Reverts case you give a non existent id", () => {
                 return exchange.connect(user1)
-                .cancelOrder(100)
-                .catch(err=>{
-                    expect(err.message).to.include("revert");
-                    expect(err.message).to.include("The given id does not exists");
-                })
-            })
+                    .cancelOrder(100)
+                    .catch(err => {
+                        expect(err.message).to.include("revert");
+                        expect(err.message).to.include("The given id does not exists");
+                    });
+            });
         });
 
     })
 
     describe("Fill order", () => {
-
+        let amount = realVal(10);
+        let amount_for_token_two = realVal(20);
+        let amountGet = realVal(10);
+        let amountGive = realVal(10);
         beforeEach(() => {
             //? MAKE THE APPROVE IN THE TOKEN DAPP TO ALLOW THE CONTRACT TO TRANSFER THE TOKENS TO HIM-SELF ON HIS BEHALF
             return tokenDapp.connect(user1)
@@ -391,6 +398,19 @@ describe('Exchange', () => {
                                                 ).then(makeOrder_tx => {
                                                     return makeOrder_tx.wait()
                                                         .then(makeOrder_result => {
+                                                            return tokenTwo.connect(user2).
+                                                                approve(exchange.address, amount_for_token_two)
+                                                                .then(approve_tx_two => {
+                                                                    return approve_tx_two.wait()
+                                                                        .then(approve_result_two => {
+                                                                            return exchange.connect(user2).
+                                                                                depositToken(tokenTwo.address, amount_for_token_two)
+                                                                                .then(deposit_tx_two => {
+                                                                                    return deposit_tx_two.wait()
+                                                                                        .then(deposit_result_two => { });
+                                                                                });
+                                                                        });
+                                                                });
                                                         });
                                                 });
                                         });
@@ -400,11 +420,109 @@ describe('Exchange', () => {
         });
 
         describe('Success', () => {
+            let result;
+            beforeEach(() => {
+                return exchange.connect(user2)
+                    .fillOrder(1)
+                    .then(fill_tx => {
+                        return fill_tx.wait()
+                            .then(fill_result => {
+                                result = fill_result;
+                            });
+                    });
+            });
 
+            it("Swapes corretly the tokens and charges the fee", () => {
+                return exchange.connect(user1)
+                    .balanceOf(tokenDapp.address, user1.address)
+                    .then(tokenDapp_balance_user1 => {
+                        expect(tokenDapp_balance_user1).to.equal(0);
+                        return exchange.connect(user1)
+                            .balanceOf(tokenTwo.address, user1.address)
+                            .then(tokenTwo_balance_user1 => {
+                                expect(tokenTwo_balance_user1).to.equal(amountGet);
+                                return exchange.connect(user2)
+                                    .balanceOf(tokenDapp.address, user2.address)
+                                    .then(tokenDapp_balance_user2 => {
+                                        expect(tokenDapp_balance_user2).to.equal(amountGive);
+                                        return exchange.connect(user2)
+                                            .balanceOf(tokenTwo.address, user2.address)
+                                            .then(tokenTwo_balance_user2 => {
+                                                expect(tokenTwo_balance_user2).to.equal(realVal(9));
+                                            });
+                                    });
+                            });
+                    });
+            });
+
+            it("Emits the event trade", () => {
+                const event = result.events[0];
+                expect(event.event).to.equal("Trade");
+                const args = event.args;
+                expect(args._id).to.equal(1);
+                expect(args._creator).to.equal(user1.address);
+                expect(args._user).to.equal(user2.address);
+                expect(args._tokenGet).to.equal(tokenTwo.address);
+                expect(args._tokenGive).to.equal(tokenDapp.address);
+                expect(args._amountGet).to.equal(amountGet);
+                expect(args._amountGive).to.equal(amountGive);
+                expect(args._timestamp).to.at.least(1);
+            })
+
+            it("Fills the order", () => {
+                return exchange.connect(user1)
+                    .filledOrders(1)
+                    .then(isFilled => {
+                        expect(isFilled).to.equal(true);
+                    })
+            })
         });
 
         describe('Failure', () => {
+            it("Should revert because of invalid id", () => {
+                return exchange.connect(user2)
+                    .fillOrder(100)
+                    .catch(err => {
+                        expect(err.message).to.include("revert");
+                        expect(err.message).to.include("The given id does not exists");
+                    })
+            });
 
-        })
-    })
+            it("Should revert because it is already filled", () => {
+                return exchange.connect(user2)
+                    .fillOrder(1)
+                    .catch(err => {
+                        expect(err.message).to.include("revert");
+                        expect(err.message).to.include("The order cannot be a filled one");
+                    });
+            });
+
+            it("Should revert because it cannot be a cancelled order", () => {
+                return exchange.connect(user1)
+                    .cancelOrder(1)
+                    .then(tx_cancelled => {
+                        return tx_cancelled.wait()
+                            .then(canceled_result => {
+                                return exchange.connect(user2)
+                                    .fillOrder(1)
+                                    .catch(err => {
+                                        expect(err.message).to.include("revert");
+                                        expect(err.message).to.include("The order cannot be a canceled one");
+                                    });
+                            });
+                    })
+            });
+
+            it("Should revert because the balance is not enought", () => {
+                return exchange.connect(user3)
+                    .fillOrder(1)
+                    .catch(err => {
+                        expect(err.message).to.include("revert");
+                        expect(err.message).to.include("You don't have enought balance to fill the order");
+                    });
+            });
+
+        });
+
+    });
 });
