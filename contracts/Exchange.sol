@@ -29,6 +29,9 @@ contract Exchange {
     //? MAPPING OF THE ORDERS
     mapping(uint256 => Order) public orders;
 
+    //? Mapping to know if a order is canceled
+    mapping(uint256 => bool) public canceledOrders;
+
     //? CONSTRUCT FUNCTION, THIS WILL INITIATE THE CONTRACT
     constructor(address _feeAccount, uint256 _feePercent) {
         feeAccount = _feeAccount;
@@ -59,6 +62,15 @@ contract Exchange {
         uint256 _balance
     );
     event OrderEvent(
+        uint256 _id,
+        address _user,
+        address _tokenGet,
+        address _tokenGive,
+        uint256 _amountGet,
+        uint256 _amountGive,
+        uint256 _timestamp
+    );
+    event CancelEvent(
         uint256 _id,
         address _user,
         address _tokenGet,
@@ -151,6 +163,37 @@ contract Exchange {
             _tokenGive,
             _amountGet,
             _amountGive,
+            block.timestamp
+        );
+    }
+
+    //? Function to cancel orders
+    /// @param _id, the id of the order
+    //* @returns Success or Revert
+    function cancelOrder(uint256 _id) public {
+        // TODO Fetch order
+        Order storage _order = orders[_id];
+
+        // TODO Check if the item exists
+        require(_order._id == _id, "The given id does not exists");
+
+        // TODO Make a obligation the cancel only gets canceled by the owner
+        require(
+            address(_order._user) == msg.sender,
+            "You need to be the owner to cancel a order"
+        );
+
+        // TODO Cancel the order
+        canceledOrders[_id] = true;
+
+        // TODO Emit event
+        emit CancelEvent(
+            _order._id,
+            msg.sender,
+            _order._tokenGet,
+            _order._tokenGive,
+            _order._amountGet,
+            _order._amountGive,
             block.timestamp
         );
     }
