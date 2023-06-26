@@ -19,6 +19,7 @@ describe('Exchange', () => {
         const Token = await ethers.getContractFactory('Token');
         const Token2 = await ethers.getContractFactory('Token');
         tokenDapp = await Token.deploy('Dapp University', 'DAPP', '1000000');
+        tokenTwo = await Token2.deploy('Another token', 'ANT', '1000000');
         accounts = await ethers.getSigners();
         deployer = accounts[0];
         feeAccount = accounts[1];
@@ -175,5 +176,98 @@ describe('Exchange', () => {
                     });
             })
         });
+    });
+
+    describe('Making orders', () => {
+
+        let result;
+        let amount = realVal(10);
+        let amountGet = realVal(10);
+        let amountGive = realVal(10);
+
+        describe('Success', () => {
+
+            beforeEach(() => {
+                //? MAKE THE APPROVE IN THE TOKEN DAPP TO ALLOW THE CONTRACT TO TRANSFER THE TOKENS TO HIM-SELF ON HIS BEHALF
+                return tokenDapp.connect(user1)
+                    .approve(exchange.address, amount)
+                    .then(approve_tx => {
+                        return approve_tx.wait()
+                            .then(approve_result => {
+                                //? MAKE THE DEPOSIT
+                                return exchange.connect(user1)
+                                    .depositToken(tokenDapp.address, amount)
+                                    .then(deposit_tx => {
+                                        return deposit_tx.wait()
+                                            .then(deposit_result => {
+                                                return exchange.connect(user1)
+                                                    .makeOrder(
+                                                        tokenTwo.address,
+                                                        tokenDapp.address,                                                   
+                                                        amountGet,
+                                                        amountGive
+                                                    ).then(makeOrder_tx => {
+                                                        return makeOrder_tx.wait()
+                                                            .then(makeOrder_result => {
+                                                                result = makeOrder_result;
+                                                            });
+                                                    });
+                                            });
+                                    });
+                            });
+                    });
+            });
+
+            it("Tracks the id correctly", () => {
+                return exchange.connect(user1)
+                    .orderCount()
+                    .then(idOrderer => {
+                        expect(idOrderer).to.equal(1);
+                    })
+            });
+
+            it("Creates the order", () => {
+                return exchange.connect(user1)
+                    .orders(1)
+                    .then(order => {
+                        expect(order._id).to.equal(1);
+                        expect(order._tokenGet).to.equal(tokenTwo.address);
+                        expect(order._tokenGive).to.equal(tokenDapp.address);
+                        expect(order._amountGet).to.equal(amountGet);
+                        expect(order._amountGive).to.equal(amountGive);
+                        expect(order._timestamp).to.at.least(1);
+                    });
+            });
+
+            it("Emits order event", () => {
+                const event = result.events[0];
+                expect(event.event).to.equal("OrderEvent");
+                const args = event.args;
+                expect(args._id).to.equal(1);
+                expect(args._tokenGet).to.equal(tokenTwo.address);
+                expect(args._tokenGive).to.equal(tokenDapp.address);
+                expect(args._amountGet).to.equal(amountGet);
+                expect(args._amountGive).to.equal(amountGive);
+                expect(args._timestamp).to.at.least(1);
+            })
+        });
+
+        describe('Failure', () => {
+            it("Rejects with no balance", () => {
+                return exchange.connect(user1)
+                    .makeOrder(
+                        tokenDapp.address,
+                        tokenTwo.address,
+                        1,
+                        200000
+                    )
+                    .then()
+                    .catch(err=>{
+                        expect(err.message).to.include("revert");
+                        expect(err.message).to.include("You don't have enought balance to give");
+                    })
+            })
+        });
+
     });
 });
