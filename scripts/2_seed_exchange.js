@@ -1,4 +1,41 @@
 const hre = require("hardhat")
+const fs = require("fs")
+const path = require("path")
+
+async function readJsonProp (filePath, key){
+    // Resolve the absolute file path
+    const absoluteFilePath = path.resolve(filePath);
+
+    // Check if the file exists
+    if (!fs.existsSync(absoluteFilePath)) {
+        console.log(`Error: The file '${absoluteFilePath}' does not exist.`);
+        return;
+    }
+    
+    // Read the JSON data from the file
+    
+    return new Promise((resolve,err)=>{
+      fs.readFile(absoluteFilePath, 'utf8', (err, data) => {
+        let result
+        if (err) {
+            console.log(`Error reading file: ${err}`);
+            return err(err)
+        }
+
+        // Parse the JSON data
+        let json_data = JSON.parse(data);
+
+        // Modify the JSON data
+        // Example: Suppose you want to update a key 'name' with a new value
+        result = json_data["31337"][key].address
+        console.log(result)
+        return resolve(result)
+    });  
+    })
+    
+    
+}
+
 /* FUNCTION TO TAKE A NUMBER OF TOKENS AND HAVE THAT
 CONSIDERING THE DECIMALS */
 const realVal = (_number_of_tokens) => {
@@ -15,23 +52,23 @@ const wait = (secounds) => {
 async function main() {
     const accounts = await ethers.getSigners()
     //? GET DAPP
-    const Dapp = await ethers.getContractAt('Token', '0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9')
+    const Dapp = await ethers.getContractAt('Token', readJsonProp("./scripts/config.json","dapp"))
     console.log(`Dapp token fetches: ${Dapp.address}`)
     //? GET mETH
-    const mETH = await ethers.getContractAt('Token', '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9')
+    const mETH = await ethers.getContractAt('Token', readJsonProp("./scripts/config.json","mETH"))
     console.log(`mETH token fetches: ${mETH.address}`)
     //? GET mDAI
-    const mDAI = await ethers.getContractAt('Token', '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707')
+    const mDAI = await ethers.getContractAt('Token', readJsonProp("./scripts/config.json","mDAI"))
     console.log(`mDAI token fetches: ${mDAI.address}`)
     //? GET THE EXCHANGE
-    const exchange = await ethers.getContractAt('Exchange', '0x610178dA211FEF7D417bC0e6FeD39F05609AD788')
+    const exchange = await ethers.getContractAt('Exchange', readJsonProp("./scripts/config.json","Exchange"))
     console.log(`The exchange address is: ${exchange.address}`)
     /* 
     ! GET DETAILS
     */
     const sender = accounts[0]
     const receiver = accounts[1]
-    let amount = realVal(10000)
+    let amount = realVal(100000)
 
     /*
     * user1 transfers 10000 mETH
@@ -50,26 +87,32 @@ async function main() {
     //* user1 approves 10000 Dapp
     transaction = await Dapp.connect(user1).approve(exchange.address, amount)
     await transaction.wait()
-    console.log(`APproved ${amount} tokens from ${user1.address}\n`)
+    console.log(`Approved ${amount} tokens from ${user1.address}\n`)
     //* Deposit 10000 tokens to exchange
     transaction = await exchange.connect(user1).depositToken(Dapp.address, amount)
     await transaction.wait()
     console.log(`Deposited ${amount} Ether from ${user1.address}\n`)
+
     //* User 2 approves mETH
     transaction = await mETH.connect(user2).approve(exchange.address, amount)
     await transaction.wait()
     console.log(`Approved ${amount} tokens from ${user2.address}`)
 
+    //* User 2 deposits mETH
+    transaction = await exchange.connect(user2).depositToken(mETH.address, amount)
+    await transaction.wait()
+    console.log(`Deposit ${amount} mETH from ${user2.address}`)
+
     //* Seed a canceled Order
 
     //* User1 makes order to get tokens
     let orderId
-    transaction = await exchange.connect(user1).makeOrder(mETH.address, realVal(100), Dapp.address, realVal(5))
+    transaction = await exchange.connect(user1).makeOrder(mETH.address, Dapp.address, realVal(100), realVal(5))
     result = await transaction.wait()
     console.log(`Make order from ${user1.address}`)
 
     //* user1 cancels order
-    orderId = result.events[0].args.id
+    orderId = result.events[0].args._id
     transaction = await exchange.connect(user1).cancelOrder(orderId)
     result = await transaction.wait()
     console.log(`Cancel order from ${user1.address}\n`)
@@ -79,12 +122,12 @@ async function main() {
     //* Seed Filled Orders
 
     //* User1 makes order to get tokens
-    transaction = await exchange.connect(user1).makeOrder(mETH.address, realVal(100), Dapp.address, realVal(5))
+    transaction = await exchange.connect(user1).makeOrder(mETH.address, Dapp.address, realVal(10), realVal(5))
     result = await transaction.wait()
     console.log(`Make order from ${user1.address}\n`)
 
     //* User2 fills order
-    orderId = result.events[0].args.id
+    orderId = result.events[0].args._id
     transaction = await exchange.connect(user2).fillOrder(orderId)
     result = await transaction.wait()
     console.log(`Filled order from ${user1.address}\n`)
@@ -92,12 +135,12 @@ async function main() {
     await wait(1)
 
     //* User1 makes order to get tokens
-    transaction = await exchange.connect(user1).makeOrder(mETH.address, realVal(50), Dapp.address, realVal(15))
+    transaction = await exchange.connect(user1).makeOrder(mETH.address, Dapp.address, realVal(10), realVal(15))
     result = await transaction.wait()
     console.log(`Make order from ${user1.address}\n`)
 
     //* User2 fills order
-    orderId = result.events[0].args.id
+    orderId = result.events[0].args._id
     transaction = await exchange.connect(user2).fillOrder(orderId)
     result = await transaction.wait()
     console.log(`Filled order from ${user1.address}\n`)
@@ -105,12 +148,12 @@ async function main() {
     await wait(1)
 
     //* User1 makes order to get tokens
-    transaction = await exchange.connect(user1).makeOrder(mETH.address, realVal(200), Dapp.address, realVal(20))
+    transaction = await exchange.connect(user1).makeOrder(mETH.address, Dapp.address, realVal(20), realVal(20))
     result = await transaction.wait()
     console.log(`Make order from ${user1.address}\n`)
 
     //* User2 fills order
-    orderId = result.events[0].args.id
+    orderId = result.events[0].args._id
     transaction = await exchange.connect(user2).fillOrder(orderId)
     result = await transaction.wait()
     console.log(`Filled order from ${user1.address}\n`)
@@ -121,7 +164,7 @@ async function main() {
 
     //* User1 makes 10 orders
     for (let index = 0; index < 10; index++) {
-        exchange.connect(user1).makeOrder(mETH.address, realVal(10 * i), Dapp.address, realVal(10))
+        exchange.connect(user1).makeOrder(mETH.address, Dapp.address, realVal(10 * index), realVal(10))
         result = await transaction.wait()
         console.log(`Make order from ${user1.address}\n`)
         await wait(1)
@@ -129,7 +172,7 @@ async function main() {
 
     //* User2 makes 10 orders
     for (let index = 0; index < 10; index++) {
-        exchange.connect(user1).makeOrder(Dapp.address, realVal(10 * i), mETH.address, realVal(10))
+        exchange.connect(user1).makeOrder(Dapp.address, mETH.address, realVal(10 + index), realVal(10))
         result = await transaction.wait()
         console.log(`Make order from ${user1.address}\n`)
         await wait(1)
