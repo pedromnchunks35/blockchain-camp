@@ -5,7 +5,8 @@ import {
     loadAccount,
     loadNetwork,
     loadProvider,
-    loadToken
+    loadTokens,
+    loadExchange
 } from '../store/iteractions'
 
 function App() {
@@ -15,19 +16,32 @@ function App() {
 
     //? LINK TO THE BLOCKCHAIN
     const loadBlockchainData = async () => {
-        //? Get the accounts
-        await loadAccount(dispatch)
+        
 
         //? Make the connection to the blockchain
         const provider = loadProvider(dispatch)
+        
+        //? Get the accounts and also get the balance
+        await loadAccount(provider,dispatch)
 
-        //? Get the network
+        //? Get the network id
         await loadNetwork(provider, dispatch)
 
-        //? Get the smart contract
-        await loadToken(
+        //? Get the tokens
+        await loadTokens(
             provider,
-            contractDetails[31337].dapp.address,
+            [
+                contractDetails[31337].dapp.address,
+                contractDetails[31337].mETH.address,
+                contractDetails[31337].mDAI.address
+            ],
+            dispatch
+        )
+
+        //? Get the exchange
+        await loadExchange(
+            provider,
+            contractDetails[31337].Exchange.address,
             dispatch
         )
     }
