@@ -11,6 +11,10 @@
     },
     "dapp": {
       "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-    }
+    },
+    "explorerUrl": "#"
+  },
+  "42":{
+    "explorerUrl": "https://kovan.etherscan.io/"
   }
 }

@@ -8,6 +8,7 @@ import {
     loadTokens,
     loadExchange
 } from '../store/iteractions'
+import Navbar from './Navbar'
 
 function App() {
 
@@ -16,16 +17,22 @@ function App() {
 
     //? LINK TO THE BLOCKCHAIN
     const loadBlockchainData = async () => {
-        
+
 
         //? Make the connection to the blockchain
         const provider = loadProvider(dispatch)
-        
-        //? Get the accounts and also get the balance
-        await loadAccount(provider,dispatch)
 
-        //? Get the network id
-        await loadNetwork(provider, dispatch)
+        //? Just in case the wallet is already connected, or in case
+        //? we change account or somethign like that
+        window.ethereum.on('accountsChanged', async () => {
+            await loadAccount(provider, dispatch)
+        })
+
+        // Reload page when network changes
+        window.ethereum.on('chainChanged', () => {
+            window.location.reload()
+        })
+
 
         //? Get the tokens
         await loadTokens(
@@ -54,7 +61,7 @@ function App() {
         <div>
 
             {/* Navbar */}
-
+            <Navbar />
             <main className='exchange grid'>
                 <section className='exchange__section--left grid'>
 
