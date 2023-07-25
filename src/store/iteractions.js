@@ -17,7 +17,7 @@ export const loadNetwork = async (provider, dispatch) => {
     return chainId
 }
 
-export const loadAccount = async (provider,dispatch) => {
+export const loadAccount = async (provider, dispatch) => {
     //? Get the accounts
     const accounts = await window.ethereum.request(
         { method: 'eth_requestAccounts' }
@@ -33,27 +33,42 @@ export const loadAccount = async (provider,dispatch) => {
 }
 
 export const loadTokens = async (provider, addresses, dispatch) => {
+    console.log(addresses)
     let token, symbol
     //? DAP TOKEN
     token = new ethers.Contract(addresses[0], tokenJSON.abi, provider)
     symbol = await token.symbol()
     dispatch({ type: 'TOKEN_1_LOADED', token, symbol })
 
-    //? mETH TOKEN
+    //? mETH TOKEN/mDAI TOKEN
     token = new ethers.Contract(addresses[1], tokenJSON.abi, provider)
     symbol = await token.symbol()
     dispatch({ type: 'TOKEN_2_LOADED', token, symbol })
-
-    //? mDAI TOKEN
-    token = new ethers.Contract(addresses[2], tokenJSON.abi, provider)
-    symbol = await token.symbol()
-    dispatch({ type: 'TOKEN_3_LOADED', token, symbol })
 
     return token
 }
 
 export const loadExchange = async (provider, address, dispatch) => {
     const exchange = new ethers.Contract(address, exchangeJSON.abi, provider)
-    dispatch({ type: 'EXCHANGE_LOADED', contract: exchange.address })
+    dispatch({ type: 'EXCHANGE_LOADED', contract: exchange})
     return exchange
+}
+
+export const loadBalances = async (exchange, tokens, account, dispatch) => {
+    //? Get the balance and format it
+    let balance = await tokens[0].balanceOf(account)
+    balance = ethers.utils.formatUnits(balance, 18)
+    dispatch({ type: 'TOKEN_1_BALANCE_LOADED', balance })
+    //? Balance token2
+    balance = await tokens[1].balanceOf(account)
+    balance = ethers.utils.formatUnits(balance, 18)
+    dispatch({ type: 'TOKEN_2_BALANCE_LOADED', balance })
+    //? Get balance and format it but now for the exchange
+    balance = await exchange.balanceOf(tokens[0].address, account)
+    balance = ethers.utils.formatUnits(balance, 18)
+    dispatch({ type: 'EXCHANGE_TOKEN_1_BALANCE_LOADED', balance })
+    //? Get balance and format it but now for the exchange for token2
+    balance = await exchange.balanceOf(tokens[1].address, account)
+    balance = ethers.utils.formatUnits(balance, 18)
+    dispatch({ type: 'EXCHANGE_TOKEN_2_BALANCE_LOADED', balance })
 }

@@ -14,9 +14,10 @@ const Navbar = () => {
 
     const dispatch = useDispatch()
     //? for the account connection
-    const connectHandler = async () => {
+    const connectHandler = async () => {  
         //? Get the accounts and also get the balance
         await loadAccount(provider, dispatch)
+        console.log(chainId)
     }
     //? For the network selection
     const networkHandler = async (e) => {

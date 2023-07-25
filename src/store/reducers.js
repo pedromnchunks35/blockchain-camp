@@ -8,7 +8,7 @@ export const provider = (state = {}, action) => {
         case 'NETWORK_LOADED':
             return {
                 ...state,
-                chainID: action.chainId
+                chainId: action.chainId
             }
         case 'ACCOUNT_LOADED':
             return {
@@ -16,7 +16,7 @@ export const provider = (state = {}, action) => {
                 account: action.account
             }
         case 'ETHER_BALANCE_LOADED':
-            return{
+            return {
                 ...state,
                 balance: action.balance
             }
@@ -25,7 +25,7 @@ export const provider = (state = {}, action) => {
     }
 }
 
-export const tokens = (state = { loaded: false, contracts: [], symbols: [] }, action) => {
+export const tokens = (state = { loaded: false, contracts: [], symbols: [], balances: [] }, action) => {
     switch (action.type) {
         case 'TOKEN_1_LOADED':
             return {
@@ -33,6 +33,26 @@ export const tokens = (state = { loaded: false, contracts: [], symbols: [] }, ac
                 loaded: true,
                 contracts: [...state.contracts, action.token],
                 symbols: [...state.symbols, action.symbol]
+            }
+        case 'TOKEN_1_BALANCE_LOADED':
+            return {
+                ...state,
+                balances: [...state.balances,action.balance]
+            }
+        case 'TOKEN_2_BALANCE_LOADED':
+            return {
+                ...state,
+                balances: [...state.balances,action.balance]
+            }
+        case 'EXCHANGE_TOKEN_1_BALANCE_LOADED':
+            return {
+                ...state,
+                balances: [...state.balances,action.balance]
+            }
+        case 'EXCHANGE_TOKEN_2_BALANCE_LOADED':
+            return {
+                ...state,
+                balances: [...state.balances,action.balance]
             }
         case 'TOKEN_2_LOADED':
             return {

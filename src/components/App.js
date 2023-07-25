@@ -9,6 +9,8 @@ import {
     loadExchange
 } from '../store/iteractions'
 import Navbar from './Navbar'
+import Markets from './Markets'
+import Balance from './Balance'
 
 function App() {
 
@@ -22,6 +24,8 @@ function App() {
         //? Make the connection to the blockchain
         const provider = loadProvider(dispatch)
 
+        await loadNetwork(provider, dispatch)
+        
         //? Just in case the wallet is already connected, or in case
         //? we change account or somethign like that
         window.ethereum.on('accountsChanged', async () => {
@@ -32,7 +36,6 @@ function App() {
         window.ethereum.on('chainChanged', () => {
             window.location.reload()
         })
-
 
         //? Get the tokens
         await loadTokens(
@@ -66,9 +69,10 @@ function App() {
                 <section className='exchange__section--left grid'>
 
                     {/* Markets */}
+                    <Markets />
 
                     {/* Balance */}
-
+                    <Balance/>
                     {/* Order */}
 
                 </section>
