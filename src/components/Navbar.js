@@ -17,14 +17,15 @@ const Navbar = () => {
     const connectHandler = async () => {  
         //? Get the accounts and also get the balance
         await loadAccount(provider, dispatch)
-        console.log(chainId)
     }
     //? For the network selection
     const networkHandler = async (e) => {
-        await window.ethereum.request({
+        window.ethereum.request({
             method: 'wallet_switchEthereumChain',
             params: [{ chainId: e.target.value }],
         })
+        .then(sol=>console.log(sol))
+        .catch(err=>console.log(err))
     }
 
     return (
@@ -41,7 +42,7 @@ const Navbar = () => {
                     <select name="networks" id="networks" value={config[chainId] ? `0x${chainId.toString(16)}` : `0`} onChange={networkHandler}>
                         <option value="0" disabled>Select Network</option>
                         <option value="0x7A69">Localhost</option>
-                        <option value="0x2a">Kovan</option>
+                        <option value="0x5">Goerli</option>
                     </select>
                 )}
 

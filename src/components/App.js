@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react'
 import contractDetails from "../config.json"
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import {
     loadAccount,
     loadNetwork,
     loadProvider,
     loadTokens,
-    loadExchange
+    loadExchange,
+    subscribeToEvents
 } from '../store/iteractions'
 import Navbar from './Navbar'
 import Markets from './Markets'
@@ -25,7 +26,7 @@ function App() {
         const provider = loadProvider(dispatch)
 
         await loadNetwork(provider, dispatch)
-        
+
         //? Just in case the wallet is already connected, or in case
         //? we change account or somethign like that
         window.ethereum.on('accountsChanged', async () => {
@@ -49,11 +50,14 @@ function App() {
         )
 
         //? Get the exchange
-        await loadExchange(
+        const exchange = await loadExchange(
             provider,
             contractDetails[31337].Exchange.address,
             dispatch
         )
+
+        //? Listen the events
+        subscribeToEvents(exchange, dispatch)
     }
 
     //? INITIAL LOAD IN REACT
@@ -72,7 +76,7 @@ function App() {
                     <Markets />
 
                     {/* Balance */}
-                    <Balance/>
+                    <Balance />
                     {/* Order */}
 
                 </section>

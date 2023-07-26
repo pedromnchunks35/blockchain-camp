@@ -33,7 +33,6 @@ export const loadAccount = async (provider, dispatch) => {
 }
 
 export const loadTokens = async (provider, addresses, dispatch) => {
-    console.log(addresses)
     let token, symbol
     //? DAP TOKEN
     token = new ethers.Contract(addresses[0], tokenJSON.abi, provider)
@@ -50,7 +49,7 @@ export const loadTokens = async (provider, addresses, dispatch) => {
 
 export const loadExchange = async (provider, address, dispatch) => {
     const exchange = new ethers.Contract(address, exchangeJSON.abi, provider)
-    dispatch({ type: 'EXCHANGE_LOADED', contract: exchange})
+    dispatch({ type: 'EXCHANGE_LOADED', contract: exchange })
     return exchange
 }
 
@@ -71,4 +70,25 @@ export const loadBalances = async (exchange, tokens, account, dispatch) => {
     balance = await exchange.balanceOf(tokens[1].address, account)
     balance = ethers.utils.formatUnits(balance, 18)
     dispatch({ type: 'EXCHANGE_TOKEN_2_BALANCE_LOADED', balance })
+}
+
+export const transferTokens = async (provider, exchange, transferType, token, amount, dispatch) => {
+    const signer = await provider.getSigner()
+    const amountToTransfer = ethers.utils.parseUnits(amount.toString(), 18)
+    //? Throw a event
+    dispatch({ type: "TRANSFER_REQUEST" })
+    //? Approve the amount of tokens we want the exchange to use
+    const transaction = await token.connect(signer).approve(exchange.address, amountToTransfer)
+    await transaction.wait()
+    //? Make the deposit
+    transaction = await exchange.connect(signer).depositToken(token.address, amountToTransfer)
+    await transaction.wait()
+}
+
+//? For subscribing events
+export const subscribeToEvents = (exchange, dispatch) => {
+    exchange.on('Deposit', (token, user, amount, balance, event) => {
+        //? Notify that it got successfull
+        dispatch({ type: 'TRANSFER_SUCCESS', event })  
+    })
 }
