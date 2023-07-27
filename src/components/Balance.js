@@ -23,6 +23,7 @@ const Balance = () => {
     const tokenBalances = useSelector(state => state.tokens.balances)
     const exchangeBalances = useSelector(state => state.exchange.balances)
     const transferProgress = useSelector(state => state.exchange.transferInProgress)
+    const events = useSelector(state => state.exchange.events)
     //? function to handle the change of the balance inputs
     const amountHandler = (e, token) => {
         if (tokens && token == tokens[0]) {
@@ -53,13 +54,36 @@ const Balance = () => {
             setToken2TransferAmount(0)
         }
     }
+    //? On submit function for the withdraw
+    const withdrawHandler = (e, token) => {
+        e.preventDefault()
+        //? Case we have the tokens address
+        if (token.address === tokens[0].address) {
+            //? we can make the deposit happen
+            transferTokens(provider, exchange, 'Withdraw', token, token1TransferAmount, dispatch)
+                .catch(err => {
+                    //? Handle the error
+                    dispatch({ type: 'TRANSFER_FAIL' })
+                })
+            setToken1TransferAmount(0)
+        } else if (token.address === tokens[1].address) {
+            //? we can make the deposit happen
+            transferTokens(provider, exchange, 'Withdraw', token, token2TransferAmount, dispatch)
+                .catch(err => {
+                    //? Handle the error
+                    dispatch({ type: 'TRANSFER_FAIL' })
+                })
+            setToken2TransferAmount(0)
+
+        }
+    }
     useEffect(() => {
         if (exchange && tokens[0] && tokens[1] && account) {
             loadBalances(exchange, tokens, account, dispatch)
         }
     },
         //? CASE ANY OF THIS VARIABLES CHANGE, IT CALL THE USE EFFECT AGAIN
-        [exchange, tokens, account, transferProgress])
+        [exchange, tokens, account, transferProgress, events])
 
     const tabHandler = (e) => {
         if (e.target.className !== depositRef.current.className) {
@@ -92,14 +116,14 @@ const Balance = () => {
                     <p><small>Exchange</small><br />{exchangeBalances && exchangeBalances[0]}</p>
                 </div>
 
-                <form onSubmit={(e) => { depositHandler(e, tokens[0]) }}>
+                <form onSubmit={(e) => { isDeposit ? depositHandler(e, tokens[0]) : withdrawHandler(e, tokens[0]) }}>
                     <label htmlFor="token0">{symbols && symbols[0]} Amount</label>
                     <input
                         value={token1TransferAmount}
                         type="text" id='token0' placeholder='0.0000' onChange={(e) => amountHandler(e.target.value, tokens[0])} />
 
                     <button className='button'>
-                        <span>{isDeposit?'Deposit':'Withdraw'}</span>
+                        <span>{isDeposit ? 'Deposit' : 'Withdraw'}</span>
                     </button>
                 </form>
             </div>
@@ -115,7 +139,7 @@ const Balance = () => {
                     <p><small>Exchange</small><br />{exchangeBalances && exchangeBalances[1]}</p>
                 </div>
 
-                <form onSubmit={(e) => { depositHandler(e, tokens[1]) }}>
+                <form onSubmit={(e) => { isDeposit ? depositHandler(e, tokens[1]) : withdrawHandler(e, tokens[1]) }}>
                     <label htmlFor="token1"></label>
                     <input
                         type="text"
@@ -126,7 +150,7 @@ const Balance = () => {
                     />
 
                     <button className='button' type='submit'>
-                        <span>{isDeposit?'Deposit':'Withdraw'}</span>
+                        <span>{isDeposit ? 'Deposit' : 'Withdraw'}</span>
                     </button>
                 </form>
             </div>
