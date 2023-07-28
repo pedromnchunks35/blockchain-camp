@@ -56,7 +56,21 @@ export const tokens = (state = { loaded: false, contracts: [], symbols: [], bala
     }
 }
 
-export const exchange = (state = { loaded: false,balances:[],contract: {}, transaction: { isSuccessful: false }, events: [] }, action) => {
+export const exchange = (
+    state =
+        {
+            loaded: false,
+            balances: [],
+            contract: {},
+            transaction:
+                { isSuccessful: false },
+            allOrders: {
+                loaded: false,
+                data: []
+            },
+            events: []
+        }, action) => {
+    let index, data
     switch (action.type) {
         case "EXCHANGE_LOADED":
             return {
@@ -93,7 +107,7 @@ export const exchange = (state = { loaded: false,balances:[],contract: {}, trans
                     isSuccessful: true
                 },
                 transferInProgress: false,
-                events: [...state.events,action.event]
+                events: [...state.events, action.event]
             }
         case 'TRANSFER_FAIL':
             return {
@@ -104,6 +118,49 @@ export const exchange = (state = { loaded: false,balances:[],contract: {}, trans
                     isSuccessful: false
                 },
                 transferInProgress: false
+            }
+        case 'NEW_ORDER_REQUEST':
+            return {
+                ...state,
+                transaction: {
+                    transactionType: 'New Order',
+                    isPending: false,
+                    isSuccessful: false,
+                    isError: true
+                }
+            }
+        case 'NEW_ORDER_FAIL':
+            return {
+                ...state,
+                transaction: {
+                    transactionType: 'New Order',
+                    isPending: false,
+                    isSuccessful: false,
+                    isError: true
+                }
+            }
+        case 'NEW_ORDER_SUCCESS':
+            // Prevent duplicate orders
+            index = state.allOrders.data.findIndex(order => order.id === action.order.id)
+
+            if (index === -1) {
+                data = [...state.allOrders.data, action.order]
+            } else {
+                data = state.allOrders.data
+            }
+
+            return {
+                ...state,
+                allOrders: {
+                    ...state.allOrders,
+                    data
+                },
+                transaction: {
+                    transactionType: 'New Order',
+                    isPending: false,
+                    isSuccessful: true
+                },
+                events: [action.event, ...state.events]
             }
         default:
             return state

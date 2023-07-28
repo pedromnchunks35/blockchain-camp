@@ -12,6 +12,7 @@ import {
 import Navbar from './Navbar'
 import Markets from './Markets'
 import Balance from './Balance'
+import Order from './Order'
 
 function App() {
 
@@ -57,7 +58,11 @@ function App() {
         )
 
         //? Listen the events
-        subscribeToEvents(exchange, dispatch)
+        try {
+          subscribeToEvents(exchange, dispatch)  
+        } catch (error) {
+            console.log(error)
+        }   
     }
 
     //? INITIAL LOAD IN REACT
@@ -78,7 +83,7 @@ function App() {
                     {/* Balance */}
                     <Balance />
                     {/* Order */}
-
+                    <Order/>
                 </section>
                 <section className='exchange__section--right grid'>
 

@@ -100,4 +100,54 @@ export const subscribeToEvents = (exchange, dispatch) => {
     exchange.on('Withdraw', (token, user, amount, balance, event) => {
         dispatch({ type: 'TRANSFER_SUCCESS', event })
     })
+    exchange.on('OrderEvent', (id, user, tokenGet, tokenGive, amountGet, amountGive, timestamp, event) => {
+        const order = event.args
+        dispatch({ type: 'NEW_ORDER_SUCCESS', order, event })
+    })
+}
+
+export const makeBuyOrder = async (provider, exchange, tokens, order, dispatch) => {
+    //? Get the necessary means
+    const tokenGet = tokens[0].address
+    const amountGet = ethers.utils.parseUnits(order.amount, 18)
+    const tokenGive = tokens[1].address
+    const amountGive = ethers.utils.parseUnits((order.amount * order.price).toString(), 18)
+    dispatch({ type: 'NEW_ORDER_REQUEST' })
+    try {
+        //? Get the signer
+        const signer = await provider.getSigner()
+        //? Make the transaction itself
+        const transaction = await exchange.connect(signer).makeOrder(
+            tokenGet,
+            tokenGive,
+            amountGet,
+            amountGive
+        )
+        await transaction.wait()
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+export const makeSellerOrder = async (provider, exchange, tokens, order, dispatch) => {
+    //? Get the necessary means
+    const tokenGet = tokens[1].address
+    const amountGet = ethers.utils.parseUnits((order.amount * order.price).toString(), 18)
+    const tokenGive = tokens[0].address
+    const amountGive = ethers.utils.parseUnits(order.amount, 18)
+    dispatch({ type: 'NEW_ORDER_REQUEST' })
+    try {
+        //? Get the signer
+        const signer = await provider.getSigner()
+        //? Make the transaction itself
+        const transaction = await exchange.connect(signer).makeOrder(
+            tokenGet,
+            tokenGive,
+            amountGet,
+            amountGive
+        )
+        await transaction.wait()
+    } catch (error) {
+        console.log(error)
+    }
 }

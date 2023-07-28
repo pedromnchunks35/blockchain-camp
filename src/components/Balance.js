@@ -119,7 +119,7 @@ const Balance = () => {
                 <form onSubmit={(e) => { isDeposit ? depositHandler(e, tokens[0]) : withdrawHandler(e, tokens[0]) }}>
                     <label htmlFor="token0">{symbols && symbols[0]} Amount</label>
                     <input
-                        value={token1TransferAmount}
+                        value={token1TransferAmount==0?"":token1TransferAmount}
                         type="text" id='token0' placeholder='0.0000' onChange={(e) => amountHandler(e.target.value, tokens[0])} />
 
                     <button className='button'>
@@ -144,7 +144,7 @@ const Balance = () => {
                     <input
                         type="text"
                         id='token1'
-                        value={token2TransferAmount}
+                        value={token2TransferAmount==0?"":token2TransferAmount}
                         placeholder='0.0000'
                         onChange={(e) => { amountHandler(e.target.value, tokens[1]) }}
                     />
