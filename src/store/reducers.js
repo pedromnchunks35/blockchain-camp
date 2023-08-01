@@ -72,6 +72,14 @@ export const exchange = (
         }, action) => {
     let index, data
     switch (action.type) {
+        case 'ALL_ORDERS_LOADED':
+            return{
+                ...state,
+                allOrders:{
+                    loaded: true,
+                    data: action.allOrders
+                }
+            }
         case "EXCHANGE_LOADED":
             return {
                 ...state,

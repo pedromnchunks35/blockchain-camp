@@ -151,3 +151,10 @@ export const makeSellerOrder = async (provider, exchange, tokens, order, dispatc
         console.log(error)
     }
 }
+//? This function loads all the orders
+export const loadAllOrders = async (provider,exchange,dispatch) =>{
+    const block = await provider.getBlockNumber()
+    const orderStream = await exchange.queryFilter('OrderEvent',0,block)
+    const allOrders = orderStream.map(event => event.args)
+    dispatch({type: 'ALL_ORDERS_LOADED',allOrders})
+}

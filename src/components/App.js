@@ -7,13 +7,14 @@ import {
     loadProvider,
     loadTokens,
     loadExchange,
-    subscribeToEvents
+    subscribeToEvents,
+    loadAllOrders
 } from '../store/iteractions'
 import Navbar from './Navbar'
 import Markets from './Markets'
 import Balance from './Balance'
 import Order from './Order'
-
+import OrderBook from './OrderBook'
 function App() {
 
     //? Assign the use dispatch to a variable
@@ -56,6 +57,8 @@ function App() {
             contractDetails[31337].Exchange.address,
             dispatch
         )
+        //? FETCH ALL ORDERS: open,filled,cancelled
+        loadAllOrders(provider,exchange,dispatch)
 
         //? Listen the events
         try {
@@ -94,7 +97,7 @@ function App() {
                     {/* Trades */}
 
                     {/* OrderBook */}
-
+                    <OrderBook/>
                 </section>
             </main>
 
