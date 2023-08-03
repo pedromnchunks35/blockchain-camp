@@ -152,9 +152,18 @@ export const makeSellerOrder = async (provider, exchange, tokens, order, dispatc
     }
 }
 //? This function loads all the orders
-export const loadAllOrders = async (provider,exchange,dispatch) =>{
+export const loadAllOrders = async (provider, exchange, dispatch) => {
     const block = await provider.getBlockNumber()
-    const orderStream = await exchange.queryFilter('OrderEvent',0,block)
+    //? Fetch canceled orders
+    const cancelStream = await exchange.queryFilter('CancelEvent', 0, block)
+    const cancelledOrders = cancelStream.map(event => event.args)
+    dispatch({ type: 'CANCELLED_ORDERS_LOADED', cancelledOrders })
+    //? Fetch filled orders
+    const tradeStream = await exchange.queryFilter('Trade', 0, block)
+    const filledOrders = tradeStream.map(event => event.args)
+    dispatch({ type: 'FILLED_ORDERS_LOADED', filledOrders })
+    //? Fetch all orders
+    const orderStream = await exchange.queryFilter('OrderEvent', 0, block)
     const allOrders = orderStream.map(event => event.args)
-    dispatch({type: 'ALL_ORDERS_LOADED',allOrders})
+    dispatch({ type: 'ALL_ORDERS_LOADED', allOrders })
 }
