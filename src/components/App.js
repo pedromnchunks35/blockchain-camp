@@ -16,6 +16,8 @@ import Balance from './Balance'
 import Order from './Order'
 import OrderBook from './OrderBook'
 import PriceChart from './PriceChart'
+import Trades from './Trades'
+import Transactions from './MyTransactions'
 function App() {
 
     //? Assign the use dispatch to a variable
@@ -94,9 +96,9 @@ function App() {
                     {/* PriceChart */}
                     <PriceChart/>
                     {/* Transactions */}
-
+                    <Transactions/>
                     {/* Trades */}
-
+                    <Trades/>
                     {/* OrderBook */}
                     <OrderBook/>
                 </section>
