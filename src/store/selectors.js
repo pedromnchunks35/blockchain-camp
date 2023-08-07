@@ -1,5 +1,5 @@
 import { createSelector } from 'reselect'
-import { get, groupBy, reject, sortBy, maxBy, minBy, last } from 'lodash'
+import { get, groupBy, reject, maxBy, minBy } from 'lodash'
 import moment from 'moment'
 import { ethers } from 'ethers'
 //? High level of accessing variables using loadash
@@ -15,7 +15,7 @@ const openOrders = state => {
     //? Grab all the data
     const all = allOrders(state)
     const filled = filledOrders(state)
-    const cancelled = filledOrders(state)
+    const cancelled = cancelledOrders(state)
     //? reject filled and cancelled
     const openOrders = reject(all, (order) => {
         const orderFilled = filled.some((o) => o._id.toString() === order._id.toString())
@@ -26,20 +26,21 @@ const openOrders = state => {
 }
 //? decoration for decoding hex values to normal values
 const decorateOrder = (order, tokens) => {
-    let token0Amount, token1Amount
-    if (order._tokenGive == tokens[1].address) {
-        token0Amount = order._amountGive
-        token1Amount = order._amountGet
-    } else {
-        token0Amount = order._amountGet
+    let token1Amount, token2Amount, tokenPrice
+    if (order._tokenGive === tokens[1].address) {
         token1Amount = order._amountGive
+        token2Amount = order._amountGet
+        tokenPrice = token1Amount / token2Amount
+    } else {
+        token1Amount = order._amountGet
+        token2Amount = order._amountGive
+        tokenPrice = token2Amount / token1Amount
     }
-    let tokenPrice = (token1Amount / token0Amount)
     tokenPrice = Math.round(tokenPrice * 100000) / 100000
     return ({
         ...order,
-        token1Amount: ethers.utils.formatUnits(token0Amount, "ether"),
-        token2Amount: ethers.utils.formatUnits(token1Amount, "ether"),
+        token1Amount: ethers.utils.formatUnits(token1Amount, "ether"),
+        token2Amount: ethers.utils.formatUnits(token2Amount, "ether"),
         tokenPrice,
         formattedTimestamp: moment.unix(order._timestamp).format('h:mm:ssa d MMM D')
     })
@@ -190,7 +191,7 @@ const decorateFilledOrder = (order, previousOrder) => {
 }
 
 const tokenPriceClass = (tokenPrice, orderId, previousOrder) => {
-    if (previousOrder._id == orderId) {
+    if (previousOrder._id === orderId) {
         return GREEN
     }
     if (previousOrder.tokenPrice <= tokenPrice) {
@@ -207,7 +208,6 @@ export const myOpenOrdersSelector = createSelector(
     openOrders,
     (account, tokens, orders) => {
         if (!tokens[0] || !tokens[1]) { return }
-        orders = orders
         //? Filter the data 
         orders = orders.filter((o) => o._user === account)
         orders = orders.filter((o) => o._tokenGet === tokens[0].address || o._tokenGet === tokens[1].address)
@@ -236,6 +236,53 @@ const decorateMyOpenOrder = (order, tokens) => {
             ...order,
             orderType,
             orderTypeClass: (orderType === 'buy' ? GREEN : RED)
+        }
+    )
+}
+
+//? My own filled orders
+//? my own open orders
+export const MyFilledOrdersSelector = createSelector(
+    account,
+    tokens,
+    filledOrders,
+    (account, tokens, orders) => {
+        if (!tokens[0] || !tokens[1]) { return }
+        //? Filter the data 
+        orders = orders.filter((o) => o._user === account || o._creator === account)
+        orders = orders.filter((o) => o._tokenGet === tokens[0].address || o._tokenGet === tokens[1].address)
+        orders = orders.filter((o) => o._tokenGive === tokens[0].address || o._tokenGive === tokens[1].address)
+        orders = decorateMyFilledOrders(orders, account, tokens)
+        orders = orders.sort((a, b) => b._timestamp - a._timestamp)
+        return orders
+    }
+)
+
+//? decorate all open orders
+const decorateMyFilledOrders = (orders, account, tokens) => {
+    return (
+        orders.map((order) => {
+            order = decorateOrder(order, tokens)
+            order = decorateMyFilledOrder(order, account, tokens)
+            return (order)
+        })
+    )
+}
+//? decorate single order
+const decorateMyFilledOrder = (order, account, tokens) => {
+    const myOrder = order._creator === account
+    let orderType;
+    if (myOrder) {
+        orderType = order._tokenGive === tokens[1].address ? 'buy' : 'sell'
+    } else {
+        orderType = order._tokenGive === tokens[1].address ? 'sell' : 'buy'
+    }
+    return (
+        {
+            ...order,
+            orderType,
+            orderTypeClass: (orderType === 'buy' ? GREEN : RED),
+            orderSign: (orderType === 'buy' ? "+" : "-")
         }
     )
 }

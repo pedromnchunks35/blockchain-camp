@@ -79,7 +79,7 @@ export const transferTokens = async (provider, exchange, transferType, token, am
         //? Throw a event
         dispatch({ type: "TRANSFER_REQUEST" })
         //? Approve the amount of tokens we want the exchange to use
-        const transaction = await token.connect(signer).approve(exchange.address, amountToTransfer)
+        var transaction = await token.connect(signer).approve(exchange.address, amountToTransfer)
         await transaction.wait()
         //? Make the deposit
         transaction = await exchange.connect(signer).depositToken(token.address, amountToTransfer)
@@ -91,8 +91,16 @@ export const transferTokens = async (provider, exchange, transferType, token, am
     }
 }
 
-//? For subscribing events
+//? For subscribing event
 export const subscribeToEvents = (exchange, dispatch) => {
+    exchange.on('Trade', (id, user, tokenGet, tokenGive, amountGet, amountGive, creator, timestamp, event) => {
+        const order = event.args
+        dispatch({ type: 'ORDER_FILL_SUCCESS', order, event })
+    })
+    exchange.on('CancelEvent', (id, user, tokenGet, tokenGive, amountGet, amountGive, timestamp, event) => {
+        const order = event.args
+        dispatch({ type: 'ORDER_CANCEL_SUCCESS', order, event })
+    })
     exchange.on('Deposit', (token, user, amount, balance, event) => {
         //? Notify that it got successfull
         dispatch({ type: 'TRANSFER_SUCCESS', event })
@@ -107,6 +115,29 @@ export const subscribeToEvents = (exchange, dispatch) => {
 }
 
 export const makeBuyOrder = async (provider, exchange, tokens, order, dispatch) => {
+    //? Get the necessary means
+    const tokenGet = tokens[1].address
+    const amountGet = ethers.utils.parseUnits(order.amount, 18)
+    const tokenGive = tokens[0].address
+    const amountGive = ethers.utils.parseUnits((order.amount * order.price).toString(), 18)
+    dispatch({ type: 'NEW_ORDER_REQUEST' })
+    try {
+        //? Get the signer
+        const signer = await provider.getSigner()
+        //? Make the transaction itself
+        const transaction = await exchange.connect(signer).makeOrder(
+            tokenGet,
+            tokenGive,
+            amountGet,
+            amountGive
+        )
+        await transaction.wait()
+    } catch (error) {
+        dispatch({ type: 'NEW_ORDER_FAIL' })
+    }
+}
+
+export const makeSellerOrder = async (provider, exchange, tokens, order, dispatch) => {
     //? Get the necessary means
     const tokenGet = tokens[0].address
     const amountGet = ethers.utils.parseUnits(order.amount, 18)
@@ -125,45 +156,48 @@ export const makeBuyOrder = async (provider, exchange, tokens, order, dispatch) 
         )
         await transaction.wait()
     } catch (error) {
-        console.log(error)
-    }
-}
-
-export const makeSellerOrder = async (provider, exchange, tokens, order, dispatch) => {
-    //? Get the necessary means
-    const tokenGet = tokens[1].address
-    const amountGet = ethers.utils.parseUnits((order.amount * order.price).toString(), 18)
-    const tokenGive = tokens[0].address
-    const amountGive = ethers.utils.parseUnits(order.amount, 18)
-    dispatch({ type: 'NEW_ORDER_REQUEST' })
-    try {
-        //? Get the signer
-        const signer = await provider.getSigner()
-        //? Make the transaction itself
-        const transaction = await exchange.connect(signer).makeOrder(
-            tokenGet,
-            tokenGive,
-            amountGet,
-            amountGive
-        )
-        await transaction.wait()
-    } catch (error) {
-        console.log(error)
+        dispatch({ type: 'NEW_ORDER_FAIL' })
     }
 }
 //? This function loads all the orders
 export const loadAllOrders = async (provider, exchange, dispatch) => {
-    const block = await provider.getBlockNumber()
-    //? Fetch canceled orders
-    const cancelStream = await exchange.queryFilter('CancelEvent', 0, block)
-    const cancelledOrders = cancelStream.map(event => event.args)
-    dispatch({ type: 'CANCELLED_ORDERS_LOADED', cancelledOrders })
-    //? Fetch filled orders
-    const tradeStream = await exchange.queryFilter('Trade', 0, block)
-    const filledOrders = tradeStream.map(event => event.args)
-    dispatch({ type: 'FILLED_ORDERS_LOADED', filledOrders })
-    //? Fetch all orders
-    const orderStream = await exchange.queryFilter('OrderEvent', 0, block)
-    const allOrders = orderStream.map(event => event.args)
-    dispatch({ type: 'ALL_ORDERS_LOADED', allOrders })
+    if (provider && exchange) {
+        const block = await provider.getBlockNumber()
+        //? Fetch canceled orders
+        const cancelStream = await exchange.queryFilter('CancelEvent', 0, block)
+        const cancelledOrders = cancelStream.map(event => event.args)
+        dispatch({ type: 'CANCELLED_ORDERS_LOADED', cancelledOrders })
+        //? Fetch filled orders
+        const tradeStream = await exchange.queryFilter('Trade', 0, block)
+        const filledOrders = tradeStream.map(event => event.args)
+        dispatch({ type: 'FILLED_ORDERS_LOADED', filledOrders })
+        //? Fetch all orders
+        const orderStream = await exchange.queryFilter('OrderEvent', 0, block)
+        const allOrders = orderStream.map(event => event.args)
+        dispatch({ type: 'ALL_ORDERS_LOADED', allOrders })
+    }
+}
+
+//? Function to cancell order
+export const cancelOrder = async (provider, exchange, order, dispatch) => {
+    dispatch({ type: 'ORDER_CANCEL_REQUEST' })
+    try {
+        const signer = await provider.getSigner()
+        const transaction = await exchange.connect(signer).cancelOrder(order._id.toNumber())
+        await transaction.wait()
+    } catch (error) {
+        dispatch({ type: 'ORDER_CANCEL_FAIL' })
+    }
+}
+
+//? Function to fill a certain order
+export const fillOrder = async (provider, exchange, order, dispatch) => {
+    dispatch({ type: 'ORDER_FILL_REQUEST' })
+    try {
+        const signer = await provider.getSigner()
+        const transaction = await exchange.connect(signer).fillOrder(order._id)
+        await transaction.wait()
+    } catch (error) {
+        dispatch({ type: 'ORDER_FILL_FAIL' })
+    }
 }

@@ -68,30 +68,38 @@ export const exchange = (
                 loaded: false,
                 data: []
             },
+            cancelledOrders: {
+                loaded: false,
+                data: []
+            },
+            filledOrders: {
+                loaded: false,
+                data: []
+            },
             events: []
         }, action) => {
     let index, data
     switch (action.type) {
-        case 'CANCELLED_ORDERS_LOADED': 
-        return{
-            ...state,
-            cancelledOrders:{
-                loaded: true,
-                data: action.cancelledOrders
-            }
-        }
-        case 'FILLED_ORDERS_LOADED':
-            return{
+        case 'CANCELLED_ORDERS_LOADED':
+            return {
                 ...state,
-                filledOrders:{
+                cancelledOrders: {
+                    loaded: true,
+                    data: action.cancelledOrders
+                }
+            }
+        case 'FILLED_ORDERS_LOADED':
+            return {
+                ...state,
+                filledOrders: {
                     loaded: true,
                     data: action.filledOrders
                 }
             }
         case 'ALL_ORDERS_LOADED':
-            return{
+            return {
                 ...state,
-                allOrders:{
+                allOrders: {
                     loaded: true,
                     data: action.allOrders
                 }
@@ -164,15 +172,15 @@ export const exchange = (
                 }
             }
         case 'NEW_ORDER_SUCCESS':
+
             // Prevent duplicate orders
-            index = state.allOrders.data.findIndex(order => order.id === action.order.id)
+            index = state.allOrders.data.findIndex(order => order._id === action.order._id)
 
             if (index === -1) {
                 data = [...state.allOrders.data, action.order]
             } else {
                 data = state.allOrders.data
             }
-
             return {
                 ...state,
                 allOrders: {
@@ -183,6 +191,72 @@ export const exchange = (
                     transactionType: 'New Order',
                     isPending: false,
                     isSuccessful: true
+                },
+                events: [action.event, ...state.events]
+            }
+        //? Cancelling orders
+        case 'ORDER_CANCEL_REQUEST':
+            return {
+                ...state,
+                transaction: {
+                    transactionType: 'Cancel',
+                    isPending: true,
+                    isSuccessful: false
+                }
+            }
+        case 'ORDER_CANCEL_SUCCESS':
+            return {
+                ...state,
+                transaction: {
+                    transactionType: 'Cancel',
+                    isPending: false,
+                    isSuccessful: true
+                },
+                cancelledOrders: {
+                    ...state.cancelledOrders,
+                    data: [
+                        ...state.cancelledOrders.data,
+                        action.order
+                    ]
+                },
+                events: [action.event, ...state.events]
+            }
+        case 'ORDER_CANCEL_FAIL':
+            return {
+                ...state,
+                transaction: {
+                    transactionType: 'Cancel',
+                    isPending: false,
+                    isSuccessful: false,
+                    isError: true
+                }
+            }
+        case "ORDER_FILL_REQUEST":
+            return {
+                ...state,
+                transaction: {
+                    transactionType: "Fill Order",
+                    isPending: true,
+                    isSuccessful: false
+                }
+            }
+        case "ORDER_FILL_SUCCESS":
+            index = state.filledOrders.data.findIndex(order => order._id.toString() === action.order._id.toString())
+            if (index === -1) {
+                data = [...state.filledOrders.data, action.order]
+            } else {
+                data = data.filledOrders.data
+            }
+            return {
+                ...state,
+                transaction: {
+                    transactionType: "Fill Order",
+                    isPending: false,
+                    isSuccessful: true
+                },
+                filledOrders: {
+                    ...state.filledOrders,
+                    data
                 },
                 events: [action.event, ...state.events]
             }

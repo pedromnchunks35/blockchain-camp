@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { makeBuyOrder, makeSellerOrder } from "../store/iteractions";
+import { useEffect, useRef, useState } from "react";
+import { loadAllOrders, makeBuyOrder, makeSellerOrder } from "../store/iteractions";
 import { useDispatch, useSelector } from "react-redux";
 
 const Order = () => {
@@ -9,6 +9,7 @@ const Order = () => {
     const buyRef = useRef(null)
     const sellRef = useRef(null)
     const provider = useSelector(state => state.provider.connection)
+    const events = useSelector(state => state.exchange.events)
     const tokens = useSelector(state => state.tokens.contracts)
     const exchange = useSelector(state => state.exchange.contract)
     const dispatch = useDispatch()
@@ -24,17 +25,21 @@ const Order = () => {
         }
     }
 
+    useEffect(() => {
+        loadAllOrders(provider, exchange, dispatch)
+    }, [events])
+
     //? Purchase handler
     const buyHandler = (e) => {
-        makeBuyOrder(provider, exchange, tokens, { amount, price }, dispatch)
         e.preventDefault()
+        makeBuyOrder(provider, exchange, tokens, { amount, price }, dispatch)
         setAmount(0)
         setPrice(0)
     }
     //? Selling handler 
     const sellHandler = (e) => {
-        makeSellerOrder(provider,exchange,tokens,{amount,price},dispatch)
         e.preventDefault()
+        makeSellerOrder(provider, exchange, tokens, { amount, price }, dispatch)
         setAmount(0)
         setPrice(0)
     }
@@ -54,7 +59,7 @@ const Order = () => {
                     (<label htmlFor="sell">Sell Amount</label>)
                 }
                 <input
-                    value={amount == 0 ? "" : amount}
+                    value={amount === 0 ? "" : amount}
                     type="text" id='amount'
                     placeholder='0.0000'
                     onChange={(e) => setAmount(e.target.value)} />
@@ -63,7 +68,7 @@ const Order = () => {
                     (<label htmlFor="sell">Sell Price</label>)
                 }
                 <input
-                    value={price == 0 ? "" : price}
+                    value={price === 0 ? "" : price}
                     type="text"
                     id='price'
                     placeholder='0.0000'

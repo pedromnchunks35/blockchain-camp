@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react'
 import contractDetails from "../config.json"
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import {
     loadAccount,
     loadNetwork,
@@ -19,10 +19,8 @@ import PriceChart from './PriceChart'
 import Trades from './Trades'
 import Transactions from './MyTransactions'
 function App() {
-
     //? Assign the use dispatch to a variable
     const dispatch = useDispatch()
-
     //? LINK TO THE BLOCKCHAIN
     const loadBlockchainData = async () => {
 
@@ -61,14 +59,14 @@ function App() {
             dispatch
         )
         //? FETCH ALL ORDERS: open,filled,cancelled
-        loadAllOrders(provider,exchange,dispatch)
+        loadAllOrders(provider, exchange, dispatch)
 
         //? Listen the events
         try {
-          subscribeToEvents(exchange, dispatch)  
+            subscribeToEvents(exchange, dispatch)
         } catch (error) {
             console.log(error)
-        }   
+        }
     }
 
     //? INITIAL LOAD IN REACT
@@ -89,18 +87,18 @@ function App() {
                     {/* Balance */}
                     <Balance />
                     {/* Order */}
-                    <Order/>
+                    <Order />
                 </section>
                 <section className='exchange__section--right grid'>
 
                     {/* PriceChart */}
-                    <PriceChart/>
+                    <PriceChart />
                     {/* Transactions */}
-                    <Transactions/>
+                    <Transactions />
                     {/* Trades */}
-                    <Trades/>
+                    <Trades />
                     {/* OrderBook */}
-                    <OrderBook/>
+                    <OrderBook />
                 </section>
             </main>
 
