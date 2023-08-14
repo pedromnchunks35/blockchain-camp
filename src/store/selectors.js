@@ -6,10 +6,22 @@ import { ethers } from 'ethers'
 const tokens = state => get(state, 'tokens.contracts')
 const account = state => get(state, 'provider.account')
 const allOrders = state => get(state, 'exchange.allOrders.data', [])
+const events = state => get(state, 'exchange.events')
 const GREEN = '#25CE8F'
 const RED = '#F45353'
 const cancelledOrders = state => get(state, 'exchange.cancelledOrders.data', [])
 const filledOrders = state => get(state, 'exchange.filledOrders.data', [])
+
+
+export const myEventsSelector = createSelector(
+    account,
+    events,
+    (acount, events) => {
+        events = events.filter((e) => e.args._user === acount)
+        return events
+    }
+)
+
 //? function to get only the open orders, removing the filled and cancelled ones
 const openOrders = state => {
     //? Grab all the data
