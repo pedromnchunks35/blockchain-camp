@@ -93,7 +93,7 @@ export const transferTokens = async (provider, exchange, transferType, token, am
 
 //? For subscribing event
 export const subscribeToEvents = (exchange, dispatch) => {
-    exchange.on('Trade', (id, user, tokenGet, tokenGive, amountGet, amountGive, creator, timestamp, event) => {
+    exchange.on('Trade', (id, user, tokenGet, tokenGive, amountGet, amountGive, creator,fee, timestamp, event) => {
         const order = event.args
         dispatch({ type: 'ORDER_FILL_SUCCESS', order, event })
     })
@@ -140,9 +140,9 @@ export const makeBuyOrder = async (provider, exchange, tokens, order, dispatch) 
 export const makeSellerOrder = async (provider, exchange, tokens, order, dispatch) => {
     //? Get the necessary means
     const tokenGet = tokens[0].address
-    const amountGet = ethers.utils.parseUnits(order.amount, 18)
+    const amountGet = ethers.utils.parseUnits((order.amount * order.price).toString(), 18)
     const tokenGive = tokens[1].address
-    const amountGive = ethers.utils.parseUnits((order.amount * order.price).toString(), 18)
+    const amountGive = ethers.utils.parseUnits(order.amount, 18)
     dispatch({ type: 'NEW_ORDER_REQUEST' })
     try {
         //? Get the signer

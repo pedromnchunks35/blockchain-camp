@@ -17,7 +17,7 @@ export const myEventsSelector = createSelector(
     account,
     events,
     (acount, events) => {
-        events = events.filter((e) => e.args._user === acount)
+        events = events.filter((e) => e.args._creator === acount)
         return events
     }
 )
@@ -39,14 +39,14 @@ const openOrders = state => {
 //? decoration for decoding hex values to normal values
 const decorateOrder = (order, tokens) => {
     let token1Amount, token2Amount, tokenPrice
-    if (order._tokenGive === tokens[1].address) {
-        token1Amount = order._amountGive
-        token2Amount = order._amountGet
+    if (order._token_creator_is_giving === tokens[0].address) {
+        token1Amount = order._amount_token_cg
+        token2Amount = order._amount_token_cw
         tokenPrice = token1Amount / token2Amount
     } else {
-        token1Amount = order._amountGet
-        token2Amount = order._amountGive
-        tokenPrice = token2Amount / token1Amount
+        token1Amount = order._amount_token_cw
+        token2Amount = order._amount_token_cg
+        tokenPrice = token1Amount / token2Amount
     }
     tokenPrice = Math.round(tokenPrice * 100000) / 100000
     return ({
@@ -65,8 +65,8 @@ export const orderBookSelector = createSelector(
     (orders, tokens) => {
         if (!tokens[0] || !tokens[1]) { return }
         //? Filter the data
-        orders = orders.filter((o) => o._tokenGet === tokens[0].address || o._tokenGet === tokens[1].address)
-        orders = orders.filter((o) => o._tokenGive === tokens[0].address || o._tokenGive === tokens[1].address)
+        orders = orders.filter((o) => o._token_creator_wants === tokens[0].address || o._token_creator_wants === tokens[1].address)
+        orders = orders.filter((o) => o._token_creator_is_giving === tokens[0].address || o._token_creator_is_giving === tokens[1].address)
         orders = decorateOrderBookOrders(orders, tokens)
         orders = groupBy(orders, 'orderType')
         //? sort orders by token price
@@ -98,7 +98,7 @@ const decorateOrderBookOrders = (orders, tokens) => {
 
 //? decoration to put the nature of the order
 const decorateOrderBookOrder = (order, tokens) => {
-    const orderType = order._tokenGive === tokens[1].address ? 'buy' : 'sell'
+    const orderType = order._token_creator_is_giving === tokens[1].address ? 'sell' : 'buy'
     return (
         {
             ...order,
@@ -116,8 +116,8 @@ export const priceChartSelector = createSelector(
     (orders, tokens) => {
         if (!tokens[0] || !tokens[1]) { return }
         //? Filter the data
-        orders = orders.filter((o) => o._tokenGet === tokens[0].address || o._tokenGet === tokens[1].address)
-        orders = orders.filter((o) => o._tokenGive === tokens[0].address || o._tokenGive === tokens[1].address)
+        orders = orders.filter((o) => o._token_creator_wants === tokens[0].address || o._token_creator_wants === tokens[1].address)
+        orders = orders.filter((o) => o._token_creator_is_giving === tokens[0].address || o._token_creator_is_giving === tokens[1].address)
         //? sort orders by timestamp
         orders = orders.sort((a, b) => a.timestamp - b.timestamp)
         //? Decorate the orders
@@ -172,8 +172,8 @@ export const filledOrdersSelector = createSelector(
     (orders, tokens) => {
         if (!tokens[0] || !tokens[1]) { return }
         //? Filter the data
-        orders = orders.filter((o) => o._tokenGet === tokens[0].address || o._tokenGet === tokens[1].address)
-        orders = orders.filter((o) => o._tokenGive === tokens[0].address || o._tokenGive === tokens[1].address)
+        orders = orders.filter((o) => o._token_creator_wants === tokens[0].address || o._token_creator_wants === tokens[1].address)
+        orders = orders.filter((o) => o._token_creator_is_giving === tokens[0].address || o._token_creator_is_giving === tokens[1].address)
         //? Sort orders by date ascending
         orders = orders.sort((a, b) => a._timestamp - b._timestamp)
         //? Put order colors (decorate)
@@ -221,9 +221,9 @@ export const myOpenOrdersSelector = createSelector(
     (account, tokens, orders) => {
         if (!tokens[0] || !tokens[1]) { return }
         //? Filter the data 
-        orders = orders.filter((o) => o._user === account)
-        orders = orders.filter((o) => o._tokenGet === tokens[0].address || o._tokenGet === tokens[1].address)
-        orders = orders.filter((o) => o._tokenGive === tokens[0].address || o._tokenGive === tokens[1].address)
+        orders = orders.filter((o) => o._creator === account)
+        orders = orders.filter((o) => o._token_creator_wants === tokens[0].address || o._token_creator_wants === tokens[1].address)
+        orders = orders.filter((o) => o._token_creator_is_giving === tokens[0].address || o._token_creator_is_giving === tokens[1].address)
         orders = decorateMyOpenOrders(orders, tokens)
         orders = orders.sort((a, b) => b._timestamp - a._timestamp)
         return orders
@@ -242,7 +242,7 @@ const decorateMyOpenOrders = (orders, tokens) => {
 }
 //? decorate single order
 const decorateMyOpenOrder = (order, tokens) => {
-    let orderType = order._tokenGive === tokens[1].address ? 'buy' : 'sell'
+    let orderType = order._token_creator_is_giving === tokens[1].address ? 'sell' : 'buy'
     return (
         {
             ...order,
@@ -261,9 +261,10 @@ export const MyFilledOrdersSelector = createSelector(
     (account, tokens, orders) => {
         if (!tokens[0] || !tokens[1]) { return }
         //? Filter the data 
-        orders = orders.filter((o) => o._user === account || o._creator === account)
-        orders = orders.filter((o) => o._tokenGet === tokens[0].address || o._tokenGet === tokens[1].address)
-        orders = orders.filter((o) => o._tokenGive === tokens[0].address || o._tokenGive === tokens[1].address)
+        console.log(orders)
+        orders = orders.filter((o) => o._creator === account || o._the_interested === account)
+        orders = orders.filter((o) => o._token_creator_wants === tokens[0].address || o._token_creator_wants === tokens[1].address)
+        orders = orders.filter((o) => o._token_creator_is_giving === tokens[0].address || o._token_creator_is_giving === tokens[1].address)
         orders = decorateMyFilledOrders(orders, account, tokens)
         orders = orders.sort((a, b) => b._timestamp - a._timestamp)
         return orders
@@ -285,9 +286,9 @@ const decorateMyFilledOrder = (order, account, tokens) => {
     const myOrder = order._creator === account
     let orderType;
     if (myOrder) {
-        orderType = order._tokenGive === tokens[1].address ? 'buy' : 'sell'
+        orderType = order.__token_creator_is_giving === tokens[1].address ? 'buy' : 'sell'
     } else {
-        orderType = order._tokenGive === tokens[1].address ? 'sell' : 'buy'
+        orderType = order._token_creator_is_giving === tokens[1].address ? 'sell' : 'buy'
     }
     return (
         {

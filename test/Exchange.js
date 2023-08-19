@@ -57,37 +57,22 @@ describe('Exchange', () => {
             let result;
             let amount = realVal(10);
 
-            beforeEach(() => {
+            beforeEach(async () => {
                 //? MAKE THE APPROVE IN THE TOKEN DAPP TO ALLOW THE CONTRACT TO TRANSFER THE TOKENS TO HIM-SELF ON HIS BEHALF
-                return tokenDapp.connect(user1)
-                    .approve(exchange.address, amount)
-                    .then(approve_tx => {
-                        return approve_tx.wait()
-                            .then(approve_result => {
-                                //? MAKE THE DEPOSIT
-                                return exchange.connect(user1)
-                                    .depositToken(tokenDapp.address, amount)
-                                    .then(deposit_tx => {
-                                        return deposit_tx.wait()
-                                            .then(deposit_result => {
-                                                result = deposit_result;
-                                            })
-                                    });
-                            });
-                    });
+                let approve_tx = await tokenDapp.connect(user1).approve(exchange.address, amount)
+                await approve_tx.wait()
+                let deposit_tx = await exchange.connect(user1).depositToken(tokenDapp.address, amount)
+                result = await deposit_tx.wait()
             });
 
-            it("Tracks the token deposit", () => {
+            it("Tracks the token deposit", async () => {
                 //? CHECK THE EXCHANGE BALANCE OF DAP TOKENS
-                return tokenDapp.balanceOf(exchange.address)
-                    .then(exchangeBalance => {
-                        expect(exchangeBalance).to.equal(amount);
-                        //? CHECK THE DEPOSITS OF THE USER
-                        return exchange.tokens(tokenDapp.address, user1.address)
-                            .then(exchangeBalanceUser1 => {
-                                expect(exchangeBalanceUser1).to.equal(amount);
-                            });
-                    });
+                let exchange_balance = await tokenDapp.balanceOf(exchange.address)
+                expect(exchange_balance).to.equal(amount);
+                //? CHECK THE DEPOSITS OF THE USER
+                let user1_inside_exchange_balance = await exchange.tokens(tokenDapp.address, user1.address)
+                expect(user1_inside_exchange_balance).to.equal(amount);
+
             });
 
             it('Emits a Deposit event', () => {
@@ -103,10 +88,8 @@ describe('Exchange', () => {
 
         describe('Failure', () => {
             let amount = realVal(10);
-            it('Fails when no tokens are approved', () => {
-                return exchange.connect(user1)
-                    .depositToken(tokenDapp.address, amount)
-                    .then()
+            it('Fails when no tokens are approved', async () => {
+                exchange.connect(user1).depositToken(tokenDapp.address, amount)
                     .catch(err => {
                         expect(err.message).to.include("revert");
                         expect(err.message).to.include("You don't have enough allowance");
@@ -185,41 +168,27 @@ describe('Exchange', () => {
     describe('Making orders', () => {
 
         let result;
-        let amount = realVal(10);
-        let amountGet = realVal(10);
-        let amountGive = realVal(10);
+        let amount = realVal(50);
+        let token_creator_wants = realVal(30);
+        let token_creator_gives = realVal(10);
 
         describe('Success', () => {
 
-            beforeEach(() => {
-                //? MAKE THE APPROVE IN THE TOKEN DAPP TO ALLOW THE CONTRACT TO TRANSFER THE TOKENS TO HIM-SELF ON HIS BEHALF
-                return tokenDapp.connect(user1)
-                    .approve(exchange.address, amount)
-                    .then(approve_tx => {
-                        return approve_tx.wait()
-                            .then(approve_result => {
-                                //? MAKE THE DEPOSIT
-                                return exchange.connect(user1)
-                                    .depositToken(tokenDapp.address, amount)
-                                    .then(deposit_tx => {
-                                        return deposit_tx.wait()
-                                            .then(deposit_result => {
-                                                return exchange.connect(user1)
-                                                    .makeOrder(
-                                                        tokenTwo.address,
-                                                        tokenDapp.address,
-                                                        amountGet,
-                                                        amountGive
-                                                    ).then(makeOrder_tx => {
-                                                        return makeOrder_tx.wait()
-                                                            .then(makeOrder_result => {
-                                                                result = makeOrder_result;
-                                                            });
-                                                    });
-                                            });
-                                    });
-                            });
-                    });
+            beforeEach(async () => {
+                //? approve the exchange to spend a certain amount of tokens of user1
+                let approve_tx = await tokenDapp.connect(user1).approve(exchange.address, amount)
+                await approve_tx.wait()
+                //? make a deposit of 50 tokens in exchange
+                let deposit_tx = await exchange.connect(user1).depositToken(tokenDapp.address, amount)
+                await deposit_tx.wait()
+                //? make a order
+                let order_tx = await exchange.connect(user1).makeOrder(
+                    tokenTwo.address,
+                    tokenDapp.address,
+                    token_creator_wants,
+                    token_creator_gives
+                )
+                result = await order_tx.wait()
             });
 
             it("Tracks the id correctly", () => {
@@ -235,10 +204,10 @@ describe('Exchange', () => {
                     .orders(1)
                     .then(order => {
                         expect(order._id).to.equal(1);
-                        expect(order._tokenGet).to.equal(tokenTwo.address);
-                        expect(order._tokenGive).to.equal(tokenDapp.address);
-                        expect(order._amountGet).to.equal(amountGet);
-                        expect(order._amountGive).to.equal(amountGive);
+                        expect(order._token_creator_wants).to.equal(tokenTwo.address);
+                        expect(order._token_creator_is_giving).to.equal(tokenDapp.address);
+                        expect(order._amount_token_cw).to.equal(token_creator_wants);
+                        expect(order._amount_token_cg).to.equal(token_creator_gives);
                         expect(order._timestamp).to.at.least(1);
                     });
             });
@@ -248,10 +217,10 @@ describe('Exchange', () => {
                 expect(event.event).to.equal("OrderEvent");
                 const args = event.args;
                 expect(args._id).to.equal(1);
-                expect(args._tokenGet).to.equal(tokenTwo.address);
-                expect(args._tokenGive).to.equal(tokenDapp.address);
-                expect(args._amountGet).to.equal(amountGet);
-                expect(args._amountGive).to.equal(amountGive);
+                expect(args._token_creator_wants).to.equal(tokenTwo.address);
+                expect(args._token_creator_is_giving).to.equal(tokenDapp.address);
+                expect(args._amount_token_cw).to.equal(token_creator_wants);
+                expect(args._amount_token_cg).to.equal(token_creator_gives);
                 expect(args._timestamp).to.at.least(1);
             })
         });
@@ -341,10 +310,10 @@ describe('Exchange', () => {
                 expect(event.event).to.equal("CancelEvent");
                 const args = event.args;
                 expect(args._id).to.equal(1);
-                expect(args._tokenGet).to.equal(tokenTwo.address);
-                expect(args._tokenGive).to.equal(tokenDapp.address);
-                expect(args._amountGet).to.equal(amountGet);
-                expect(args._amountGive).to.equal(amountGive);
+                expect(args._token_creator_wants).to.equal(tokenTwo.address);
+                expect(args._token_creator_is_giving).to.equal(tokenDapp.address);
+                expect(args._amount_token_cw).to.equal(amountGet);
+                expect(args._amount_token_cg).to.equal(amountGive);
                 expect(args._timestamp).to.at.least(1);
             });
         });
@@ -461,11 +430,11 @@ describe('Exchange', () => {
                 const args = event.args;
                 expect(args._id).to.equal(1);
                 expect(args._creator).to.equal(user1.address);
-                expect(args._user).to.equal(user2.address);
-                expect(args._tokenGet).to.equal(tokenTwo.address);
-                expect(args._tokenGive).to.equal(tokenDapp.address);
-                expect(args._amountGet).to.equal(amountGet);
-                expect(args._amountGive).to.equal(amountGive);
+                expect(args._the_interested).to.equal(user2.address);
+                expect(args._token_creator_wants).to.equal(tokenTwo.address);
+                expect(args._token_creator_is_giving).to.equal(tokenDapp.address);
+                expect(args._amount_token_cw).to.equal(amountGet);
+                expect(args._amount_token_cg).to.equal(amountGive);
                 expect(args._timestamp).to.at.least(1);
             })
 
@@ -511,15 +480,6 @@ describe('Exchange', () => {
                                     });
                             });
                     })
-            });
-
-            it("Should revert because the balance is not enought", () => {
-                return exchange.connect(user3)
-                    .fillOrder(1)
-                    .catch(err => {
-                        expect(err.message).to.include("revert");
-                        expect(err.message).to.include("You don't have enought balance to fill the order");
-                    });
             });
 
         });

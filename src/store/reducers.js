@@ -245,7 +245,7 @@ export const exchange = (
             if (index === -1) {
                 data = [...state.filledOrders.data, action.order]
             } else {
-                data = data.filledOrders.data
+                data = state.filledOrders.data
             }
             return {
                 ...state,

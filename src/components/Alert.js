@@ -14,7 +14,9 @@ const Alert = () => {
     }
     useEffect(() => {
         if ((isPending || isError || myEvents[0]) && account) {
-            alertRef.current.className = 'alert'
+            if (alertRef.current) {
+                alertRef.current.className = 'alert'
+            }
         }
     }, [isError, isPending, account, myEvents])
     return (

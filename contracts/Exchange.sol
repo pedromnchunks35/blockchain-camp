@@ -44,11 +44,11 @@ contract Exchange {
     //! STRUCTS
     struct Order {
         uint256 _id; //? The id of the order
-        address _user; //? User who made the order
-        address _tokenGet; //? The token that the user whishes
-        address _tokenGive; //? The token that the user wants to give over
-        uint256 _amountGet; //? The amount of tokenGet the user wishes to get
-        uint256 _amountGive; //? The amount of tokenGive the user wishes to give over
+        address _creator; //? User who made the order
+        address _token_creator_wants; //? The token that the user whishes
+        address _token_creator_is_giving; //? The token that the user wants to give over
+        uint256 _amount_token_cw; //? The amount of tokenGet the user wishes to get
+        uint256 _amount_token_cg; //? The amount of tokenGive the user wishes to give over
         uint256 _timestamp; //? Timestamp of the order
     }
     //! EVENTS
@@ -66,30 +66,31 @@ contract Exchange {
     );
     event OrderEvent(
         uint256 _id,
-        address _user,
-        address _tokenGet,
-        address _tokenGive,
-        uint256 _amountGet,
-        uint256 _amountGive,
+        address _creator,
+        address _token_creator_wants,
+        address _token_creator_is_giving,
+        uint256 _amount_token_cw,
+        uint256 _amount_token_cg,
         uint256 _timestamp
     );
     event CancelEvent(
         uint256 _id,
-        address _user,
-        address _tokenGet,
-        address _tokenGive,
-        uint256 _amountGet,
-        uint256 _amountGive,
+        address _creator,
+        address _token_creator_wants,
+        address _token_creator_is_giving,
+        uint256 _amount_token_cw,
+        uint256 _amount_token_cg,
         uint256 _timestamp
     );
     event Trade(
         uint256 _id,
-        address _user,
-        address _tokenGet,
-        address _tokenGive,
-        uint256 _amountGet,
-        uint256 _amountGive,
         address _creator,
+        address _token_creator_wants,
+        address _token_creator_is_giving,
+        uint256 _amount_token_cw,
+        uint256 _amount_token_cg,
+        address _the_interested,
+        uint256 _fee_token_creator_wants,
         uint256 _timestamp
     );
 
@@ -139,21 +140,21 @@ contract Exchange {
     }
 
     //? MAKE A ORDERER FUNCTION
-    /// @param _tokenGet, the token we wish to have back
-    /// @param _tokenGive, the token we wish to dispose over another
-    /// @param _amountGet, the amount we wish to have back
-    /// @param _amountGive, the amount we wish to dispose over another amount of tokens
+    /// @param _token_creator_wants, the token we wish to have back
+    /// @param _token_creator_is_giving, the token we wish to dispose over another
+    /// @param _amount_token_cw, the amount we wish to have back
+    /// @param _amount_token_cg, the amount we wish to dispose over another amount of tokens
     //* @returns Success or Revert
     //* @note The "block.timestamp" gets the "Unix epoch time" of a block, which is the number of secounds since 1970 january. It is a way to represent dates
     function makeOrder(
-        address _tokenGet,
-        address _tokenGive,
-        uint256 _amountGet,
-        uint256 _amountGive
+        address _token_creator_wants,
+        address _token_creator_is_giving,
+        uint256 _amount_token_cw,
+        uint256 _amount_token_cg
     ) public {
         // TODO Check if the user has balance
         require(
-            balanceOf(_tokenGive, msg.sender) >= _amountGive,
+            balanceOf(_token_creator_is_giving, msg.sender) >= _amount_token_cg,
             "You don't have enought balance to give"
         );
         // TODO Increment id
@@ -162,20 +163,20 @@ contract Exchange {
         orders[orderCount] = Order(
             orderCount,
             msg.sender,
-            _tokenGet,
-            _tokenGive,
-            _amountGet,
-            _amountGive,
+            _token_creator_wants,
+            _token_creator_is_giving,
+            _amount_token_cw,
+            _amount_token_cg,
             block.timestamp
         );
         // TODO Emit event of order creation
         emit OrderEvent(
             orderCount,
             msg.sender,
-            _tokenGet,
-            _tokenGive,
-            _amountGet,
-            _amountGive,
+            _token_creator_wants,
+            _token_creator_is_giving,
+            _amount_token_cw,
+            _amount_token_cg,
             block.timestamp
         );
     }
@@ -192,7 +193,7 @@ contract Exchange {
 
         // TODO Make a obligation the cancel only gets canceled by the owner
         require(
-            address(_order._user) == msg.sender,
+            address(_order._creator) == msg.sender,
             "You need to be the owner to cancel a order"
         );
 
@@ -203,10 +204,10 @@ contract Exchange {
         emit CancelEvent(
             _order._id,
             msg.sender,
-            _order._tokenGet,
-            _order._tokenGive,
-            _order._amountGet,
-            _order._amountGive,
+            _order._token_creator_wants,
+            _order._token_creator_is_giving,
+            _order._amount_token_cw,
+            _order._amount_token_cg,
             block.timestamp
         );
     }
@@ -227,14 +228,15 @@ contract Exchange {
         // TODO Order cannot be filled
         require(!filledOrders[_id], "The order cannot be a filled one");
 
-        // TODO Calculate the fee
-        uint256 _feeAmount = (_order._amountGet * feePercent) / 100;
+        // TODO Calculate the fee, which needs to be calculated with the value the user wants,
+        // TODO Because the user that is interested is buying with the token the creator wants
+        uint256 _feeAmount = (_order._amount_token_cw * feePercent) / 100;
 
         // TODO The msg.sender needs to have enough balance of the tokens the other is asking in sum with the fee
         require(
-            tokens[_order._tokenGet][msg.sender] >=
-                _order._amountGet + _feeAmount,
-            "You don't have enought balance to fill the order"
+            tokens[_order._token_creator_wants][msg.sender] >=
+                _order._amount_token_cw + _feeAmount,
+            "You don't have enought balance of the token you intend to trade to make the trade happen"
         );
         // TODO Swap the tokens
         _trade(_order, _feeAmount);
@@ -247,25 +249,24 @@ contract Exchange {
     /// @param _order, this is the order info
     //* @return Success
     function _trade(Order storage _order, uint256 _feeAmount) internal {
-        // TODO Send the Fee to the account that receives the fee
-        tokens[_order._tokenGet][feeAccount] += _feeAmount;
-        // TODO Remove tokens from the orderer creator
-        tokens[_order._tokenGive][_order._user] -= _order._amountGive;
-        // TODO Add the tokens that the order established to swap
-        tokens[_order._tokenGet][_order._user] += _order._amountGet;
-        // TODO Remove tokens from the orderer filler
-        tokens[_order._tokenGet][msg.sender] -= (_order._amountGet +
-            _feeAmount);
-        // TODO Add the tokens that the filler agreed to give out
-        tokens[_order._tokenGive][msg.sender] += _order._amountGive;
+        //? The creator trade
+        tokens[_order._token_creator_is_giving][_order._creator]-=_order._amount_token_cg;
+        tokens[_order._token_creator_wants][_order._creator]+=_order._amount_token_cw;
+        //? The sender (interested), trade
+        tokens[_order._token_creator_is_giving][msg.sender]+=_order._amount_token_cg;
+        tokens[_order._token_creator_wants][msg.sender]-=_order._amount_token_cw+_feeAmount;
+        //? The fee account will receive the fee
+        tokens[_order._token_creator_wants][feeAccount]+=_feeAmount;
+        //? The creator
         emit Trade(
             _order._id,
+            _order._creator,
+            _order._token_creator_wants,
+            _order._token_creator_is_giving,
+            _order._amount_token_cw,
+            _order._amount_token_cg,
             msg.sender,
-            _order._tokenGet,
-            _order._tokenGive,
-            _order._amountGet,
-            _order._amountGive,
-            _order._user,
+            _feeAmount,
             block.timestamp
         );
     }
